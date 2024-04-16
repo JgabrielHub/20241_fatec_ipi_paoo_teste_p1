@@ -5,15 +5,18 @@ const {
     APPID,
     Q,
     LIMIT,
-    URL_BASE
+    GEO_URL_BASE,
+    UNITS,
+    IDIOM,
+    CW_URL_BASE
   } = process.env
 
-const url = `${URL_BASE}?q=${Q}&limit=${LIMIT}&appid=${APPID}`
+const urlGeo = `${GEO_URL_BASE}?q=${Q}&limit=${LIMIT}&appid=${APPID}`
 
 
-async function obtemCoordenadas() {
+async function obterCoordenadas() {
     try {
-        const res = await axios.get(url)
+        const res = await axios.get(urlGeo)
         
         if (res.data && res.data.length > 0) {
             const cidade = res.data[0];
@@ -30,11 +33,29 @@ async function obtemCoordenadas() {
     }
 }
 
+async function obterPrevisao() {
+    try {
+        const {latitude, longitude } = await obterCoordenadas();
+        const urlCw = `${CW_URL_BASE}?lat=${latitude}&lon=${longitude}&appid=${APPID}&units=${UNITS}&lang=${IDIOM}`
+        const res = await axios.get(urlCw)
+        
+        if (res.data) {
+            const feelsLike = res.data.main.feels_like;
+            const description = res.data.weather[0].description;
+            return { feelsLike, description };
+        } else {
+            throw new Error("Erro ao obter condições climáticas atuais.");
+        }
+    } catch (error) {
+        throw new Error("Erro ao obter condições climáticas atuais:", error.message);
+    }
+}
 
-obtemCoordenadas()
-.then(coordenadas => {
-    console.log(`As coordenadas de ${Q}, no estado de ${coordenadas.estado}, em ${coordenadas.pais} são: Latitude ${coordenadas.latitude}, Longitude ${coordenadas.longitude}`);
+obterPrevisao()
+.then(weather => {
+    console.log(`Sensação térmica em ${Q}: ${weather.feelsLike}°C`);
+    console.log(`Descrição do clima em ${Q}: ${weather.description}`);
 })
 .catch(error => {
-     console.error(error.message);
+    console.error(error.message);
 });
